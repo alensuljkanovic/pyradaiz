@@ -2,14 +2,28 @@
 This module contains all actions used by pyradaiz.
 """
 
-from pyradaiz.model.consts import START_ICON, STOP_ICON, POMODORO_DURATION
+from model.consts import START_ICON, STOP_ICON, POMODORO_DURATION, RESET_ICON
 
 __author__ = 'Alen Suljkanovic'
 
 from PyQt4 import QtGui
 
 
-class StartAction(QtGui.QAction):
+class PyradaizAction(QtGui.QAction):
+    """
+    Base class for all actions used in pyradaiz.
+    """
+    def __init__(self, parent):
+        super(PyradaizAction, self).__init__(parent)
+
+    def do(self):
+        """
+        Executes the action
+        """
+        raise Exception("Action's do method is not implemented!")
+
+
+class StartAction(PyradaizAction):
 
     def __init__(self, parent):
         super(StartAction, self).__init__(parent)
@@ -34,7 +48,7 @@ class StartAction(QtGui.QAction):
         self.parent.timer_thread.start()
 
 
-class StopAction(QtGui.QAction):
+class StopAction(PyradaizAction):
     def __init__(self,parent):
         super(StopAction, self).__init__(parent)
         self.parent = parent
@@ -55,12 +69,13 @@ class StopAction(QtGui.QAction):
         self.parent.running = False
 
 
-class ResetAction(QtGui.QAction):
+class ResetAction(PyradaizAction):
 
     def __init__(self, parent):
         super(ResetAction, self).__init__(parent)
         self.parent = parent
         self.setText("&Reset")
+        self.setIcon(QtGui.QIcon(RESET_ICON))
         self.setShortcut('Ctrl+R')
         self.setStatusTip('Reset pomodoro timer')
         self.triggered.connect(self.do)
@@ -80,11 +95,22 @@ class ResetAction(QtGui.QAction):
                                          self.parent.seconds))
 
 
-class QuitAction(QtGui.QAction):
+class QuitAction(PyradaizAction):
 
-    def __init__(self, parent, *args, **kwargs):
+    def __init__(self, parent):
         super(QuitAction, self).__init__(parent)
+        self.parent = parent
         self.setText("&Quit")
         self.setShortcut('Ctrl+Q')
         self.setStatusTip('Exit application')
+        self.parent.timer_thread.terminate()
         self.triggered.connect(QtGui.qApp.quit)
+
+
+class SettingsAction(PyradaizAction):
+
+    def __init__(self, parent):
+        super(SettingsAction, self).__init__(parent)
+        self.parent = parent
+        self.setText("&Settings")
+        self.triggered.connect(self.do)
