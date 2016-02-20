@@ -1,7 +1,10 @@
 import sys
 from PyQt4 import QtGui, QtCore
+from pyradaiz.model.actions import StartAction, StopAction, QuitAction, \
+    ResetAction
 from pyradaiz.model.consts import SHORT_BREAK, POMODORO_DURATION, UP_ARROW_ICON, \
-    DOWN_ARROW_ICON, GO_ON, TAKE_A_BREAK, LONG_BREAK, LOGO_IMAGE
+    DOWN_ARROW_ICON, GO_ON, TAKE_A_BREAK, LONG_BREAK, LOGO_IMAGE, START_ICON, \
+    STOP_ICON
 from pyradaiz import icons
 
 
@@ -33,12 +36,12 @@ class Task(object):
         self.finished = False
 
 
-class PyModoroThread(QtCore.QThread):
+class PyradaizThread(QtCore.QThread):
     """
     Thread that modifies the counter and gives notifications about breaks.
     """
     def __init__(self, minutes, seconds, *args, **kwargs):
-        super(PyModoroThread, self).__init__(*args, **kwargs)
+        super(PyradaizThread, self).__init__(*args, **kwargs)
         self.minutes = minutes
         self.seconds = seconds
         self.pomodoro_cnt = 0
@@ -83,12 +86,12 @@ class PyModoroThread(QtCore.QThread):
         return time_str(self.minutes, self.seconds)
 
 
-class PyModoroGui(QtGui.QMainWindow):
+class PyradaizGui(QtGui.QMainWindow):
     """
     Main window.
     """
     def __init__(self, *args, **kwargs):
-        super(PyModoroGui, self).__init__(*args, **kwargs)
+        super(PyradaizGui, self).__init__(*args, **kwargs)
 
         self.setWindowTitle("pyradaiz")
         main_layout = QtGui.QVBoxLayout()
@@ -108,15 +111,14 @@ class PyModoroGui(QtGui.QMainWindow):
  
         btn_layout = QtGui.QHBoxLayout()
         self.btn_start = QtGui.QPushButton("Start", self)
-        self.btn_start.clicked.connect(self.start_action)
+        # self.btn_start.clicked.connect(self.start_action)
 
         btn_layout.addWidget(self.btn_start)
         self.btn_stop = QtGui.QPushButton("Stop", self)
-        self.btn_stop.clicked.connect(self.end_action)
+        # self.btn_stop.clicked.connect(self.end_action)
         btn_layout.addWidget(self.btn_stop)
 
         self.btn_reset = QtGui.QPushButton("Reset", self)
-        self.btn_reset.clicked.connect(self.reset_action)
         btn_layout.addWidget(self.btn_reset)
         btn_layout.addStretch()
 
@@ -152,7 +154,7 @@ class PyModoroGui(QtGui.QMainWindow):
 
         self.setWindowIcon(self.logo)
 
-        self.timer_thread = PyModoroThread(None, None)
+        self.timer_thread = PyradaizThread(None, None)
         self.connect(self.timer_thread,
                      QtCore.SIGNAL("update_display(QString)"),
                      self.update)
@@ -161,37 +163,36 @@ class PyModoroGui(QtGui.QMainWindow):
         self.connect(self.timer_thread, QtCore.SIGNAL("go_on(QString)"),
                      self.show_message)
 
-    def start_action(self):
-        """
-        Starts counter for the selected task.
-        """
-        if self.running:
-            return
+        self.create_actions()
+        self.create_context_menu()
 
-        self.running = True
-        self.timer_thread.minutes = self.minutes
-        self.timer_thread.seconds = self.seconds
-        self.timer_thread.start()
+    def create_actions(self):
+        """
+        Create actions and assign them to the buttons.
+        """
+        self.start_action = StartAction(self)
+        self.btn_start.clicked.connect(self.start_action.do)
 
-    def end_action(self):
-        """
-        Stops counter.
-        """
-        self.minutes = self.timer_thread.minutes
-        self.seconds = self.timer_thread.seconds
-        self.timer_thread.terminate()
-        self.running = False
+        self.stop_action = StopAction(self)
+        self.btn_stop.clicked.connect(self.stop_action.do)
 
-    def reset_action(self):
+        self.reset_action = ResetAction(self)
+        self.btn_reset.clicked.connect(self.reset_action.do)
+        self.quit_action = QuitAction(self)
+
+    def create_context_menu(self):
         """
-        Resets timer to initial state.
+        Creates context menu used for system tray icon.
         """
-        self.minutes = POMODORO_DURATION
-        self.seconds = 0
-        self.pomodoro_cnt = 0
-        self.timer_thread.terminate()
-        self.running = False
-        self.lcd.display(time_str(self.minutes, self.seconds))
+        self.context_menu = QtGui.QMenu()
+        self.tray_icon.setContextMenu(self.context_menu)
+
+        self.context_menu.addAction(self.start_action)
+        self.context_menu.addAction(self.stop_action)
+        self.context_menu.addSeparator()
+        self.context_menu.addAction(self.reset_action)
+        self.context_menu.addSeparator()
+        self.context_menu.addAction(QuitAction(self.context_menu))
 
     def update(self, time):
         """
