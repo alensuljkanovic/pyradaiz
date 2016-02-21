@@ -1,10 +1,14 @@
+import os
 import sys
+from xml.etree.ElementTree import ElementTree, Element, SubElement
 from PyQt4 import QtGui, QtCore
+from xdg.Menu import ELEMENT_NODE
 from model.actions import StartAction, StopAction, QuitAction, \
     ResetAction, SettingsAction
 from model.consts import SHORT_BREAK, POMODORO_DURATION, UP_ARROW_ICON, \
     DOWN_ARROW_ICON, GO_ON, TAKE_A_BREAK, LONG_BREAK, LOGO_IMAGE, START_ICON, \
     STOP_ICON, RESET_ICON
+from model.utils import get_root_path
 
 
 def time_str(minutes, seconds):
@@ -35,16 +39,82 @@ class Task(object):
         self.finished = False
 
 
+class PyradaizSettings(object):
+    """
+    Settings object. Contains information about pomodoro duration, short break
+    duration and long break duration.
+    """
+    def __init__(self, parent):
+        super(PyradaizSettings, self).__init__()
+        self.parent = parent
+        self.file_path = None
+        # Default settings...
+        self._pomodoro_duration = POMODORO_DURATION
+        self.short_break = SHORT_BREAK
+        self.long_break = LONG_BREAK
+
+    def save(self):
+        """
+        Saves settings into the file.
+        """
+        file_path = os.path.join(get_root_path(), "config.xml")
+        root = Element("config")
+        tree = ElementTree(root)
+
+        pomodoro_duration = SubElement(root, "pomodoro_duration")
+        pomodoro_duration.text = "%s" % self.pomodoro_duration
+
+        short_break = SubElement(root, "short_break")
+        short_break.text = "%s" % self.short_break
+
+        long_break = SubElement(root, "long_break")
+        long_break.text = "%s" % self.long_break
+
+        tree.write(file_path)
+
+    def load(self):
+        """
+        Loads settings from .xml file.
+        """
+        file_path = os.path.join(get_root_path(), "config.xml")
+        try:
+            with open(file_path) as f:
+                tree = ElementTree()
+                tree.parse(f)
+                root = tree.getroot()
+
+                self.pomodoro_duration = int(root.find("pomodoro_duration").text)
+                self.short_break = int(root.find("short_break").text)
+                self.long_break = int(root.find("long_break").text)
+
+        except FileNotFoundError:
+            pass
+
+    @property
+    def pomodoro_duration(self):
+        return self._pomodoro_duration
+
+    @pomodoro_duration.setter
+    def pomodoro_duration(self, duration):
+        self._pomodoro_duration = duration
+        self.parent.minutes = duration
+
+
 class PyradaizThread(QtCore.QThread):
     """
     Thread that modifies the counter and gives notifications about breaks.
     """
-    def __init__(self, minutes, seconds, *args, **kwargs):
-        super(PyradaizThread, self).__init__(*args, **kwargs)
-        self.minutes = minutes
-        self.seconds = seconds
+    def __init__(self, parent):
+        super(PyradaizThread, self).__init__()
+        self.parent = parent
+        self.minutes = self.parent.minutes
+        self.seconds = self.parent.seconds
+
+        settings = self.parent.settings
+        self.short_break = settings.short_break
+        self.long_break = settings.long_break
         self.pomodoro_cnt = 0
-        # Shows if it's time to nofity about the break or not.
+        # Shows if it's time to notify about the break or not.
         self._break = False
 
     def run(self):
@@ -62,8 +132,11 @@ class PyradaizThread(QtCore.QThread):
                 if not self._break:
                     self.pomodoro_cnt += 1
                     # Take a long break after third pomodoro session...
-                    self.minutes = SHORT_BREAK if self.pomodoro_cnt % 3 != 0 \
-                        else LONG_BREAK
+                    if self.pomodoro_cnt % 3 != 0:
+                        self.minutes = self.short_break
+                    else:
+                        self.minutes = self.long_break
+
                     self.emit(QtCore.SIGNAL("take_a_break(QString)"),
                               "%s" % self.minutes)
                 else:
@@ -97,10 +170,12 @@ class PyradaizGui(QtGui.QMainWindow):
  
         self.lcd = QtGui.QLCDNumber(self)
 
-        self.minutes = POMODORO_DURATION
-        self.seconds = 0
         self.tasks = []
         self.running = False
+        self.settings = PyradaizSettings(self)
+        self.settings.load()
+        self.minutes = self.settings.pomodoro_duration
+        self.seconds = 0
 
         init_time = time_str(self.minutes, self.seconds)
         self.lcd.setDigitCount(len(init_time))
@@ -154,7 +229,7 @@ class PyradaizGui(QtGui.QMainWindow):
 
         self.setWindowIcon(self.logo)
 
-        self.timer_thread = PyradaizThread(None, None)
+        self.timer_thread = PyradaizThread(self)
         self.connect(self.timer_thread,
                      QtCore.SIGNAL("update_display(QString)"),
                      self.update)

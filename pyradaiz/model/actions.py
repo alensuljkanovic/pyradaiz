@@ -1,6 +1,7 @@
 """
 This module contains all actions used by pyradaiz.
 """
+from dialogs import SettingsDialog
 
 from model.consts import START_ICON, STOP_ICON, POMODORO_DURATION, RESET_ICON
 
@@ -44,7 +45,7 @@ class StartAction(PyradaizAction):
 
         self.parent.running = True
         self.parent.timer_thread.minutes = self.parent.minutes
-        self.parent.timer_thread.seconds = self.parent.seconds
+        self.parent.timer_thread.seconds = 0
         self.parent.timer_thread.start()
 
 
@@ -84,7 +85,7 @@ class ResetAction(PyradaizAction):
         """
         Executes the action.
         """
-        self.parent.minutes = POMODORO_DURATION
+        self.parent.minutes = self.parent.settings.pomodoro_duration
         self.parent.seconds = 0
         self.parent.pomodoro_cnt = 0
         self.parent.timer_thread.terminate()
@@ -114,3 +115,10 @@ class SettingsAction(PyradaizAction):
         self.parent = parent
         self.setText("&Settings")
         self.triggered.connect(self.do)
+
+    def do(self):
+        """
+        Executes the action.
+        """
+        dialog = SettingsDialog(self.parent)
+        dialog.exec_()

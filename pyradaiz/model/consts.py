@@ -20,3 +20,6 @@ RESET_ICON = os.path.join(icons_path, "reset.png")
 
 TAKE_A_BREAK = "Sir, you should take a %s minute break"
 GO_ON = "Go on, sir!"
+
+SETTINGS_LABEL_WIDTH = 140
+LINE_EDIT_WIDTH = 40
