@@ -1,11 +1,11 @@
 import os
-import sys
 from xml.etree.ElementTree import ElementTree, Element, SubElement
 from PyQt4 import QtGui, QtCore
 from model.actions import StartAction, StopAction, QuitAction, \
     ResetAction, SettingsAction, TasksAction, AboutAction
 from model.consts import SHORT_BREAK, POMODORO_DURATION,\
-    GO_ON, TAKE_A_BREAK, LONG_BREAK, LOGO_IMAGE
+    GO_ON, TAKE_A_BREAK, LONG_BREAK, LOGO_IMAGE, ALWAYS_ON_TOP_NO, \
+    ALWAYS_ON_TOP_YES
 from model.utils import get_root_path
 
 
@@ -50,6 +50,7 @@ class PyradaizSettings(object):
         self._pomodoro_duration = POMODORO_DURATION
         self.short_break = SHORT_BREAK
         self.long_break = LONG_BREAK
+        self._always_on_top = ALWAYS_ON_TOP_NO
 
     def save(self):
         """
@@ -68,6 +69,9 @@ class PyradaizSettings(object):
         long_break = SubElement(root, "long_break")
         long_break.text = "%s" % self.long_break
 
+        always_on_top = SubElement(root, "always_on_top")
+        always_on_top.text = self.always_on_top
+
         tree.write(file_path)
 
     def load(self):
@@ -84,7 +88,7 @@ class PyradaizSettings(object):
                 self.pomodoro_duration = int(root.find("pomodoro_duration").text)
                 self.short_break = int(root.find("short_break").text)
                 self.long_break = int(root.find("long_break").text)
-
+                self.always_on_top = root.find("always_on_top").text
         except FileNotFoundError:
             pass
 
@@ -96,6 +100,23 @@ class PyradaizSettings(object):
     def pomodoro_duration(self, duration):
         self._pomodoro_duration = duration
         self.parent.minutes = duration
+
+    @property
+    def always_on_top(self):
+        return self._always_on_top
+
+    @always_on_top.setter
+    def always_on_top(self, value):
+        self._always_on_top = value
+
+        if value == ALWAYS_ON_TOP_YES:
+            self.parent.setWindowFlags(self.parent.windowFlags()
+                                       | QtCore.Qt.WindowStaysOnTopHint)
+        else:
+            self.parent.setWindowFlags(self.parent.windowFlags()
+                                       & ~QtCore.Qt.WindowStaysOnTopHint)
+        # Show must be called after the window flags are changed.
+        self.parent.show()
 
 
 class PyradaizThread(QtCore.QThread):

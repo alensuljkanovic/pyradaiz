@@ -1,5 +1,6 @@
 from model.consts import SETTINGS_LABEL_WIDTH, LINE_EDIT_WIDTH, \
-    POMODORO_DURATION, SHORT_BREAK, LONG_BREAK
+    POMODORO_DURATION, SHORT_BREAK, LONG_BREAK, ALWAYS_ON_TOP_YES, \
+    ALWAYS_ON_TOP_NO
 
 __author__ = 'Alen Suljkanovic'
 
@@ -16,9 +17,10 @@ class SettingsDialog(QtGui.QDialog):
         """
         super(SettingsDialog, self).__init__(parent)
         self.parent = parent
-        self.pomodoro_duration = self.parent.settings.pomodoro_duration
-        self.short_break = self.parent.settings.short_break
-        self.long_break = self.parent.settings.long_break
+        settings = self.parent.settings
+        self.pomodoro_duration = settings.pomodoro_duration
+        self.short_break = settings.short_break
+        self.long_break = settings.long_break
 
         self.init_ui()
 
@@ -73,6 +75,22 @@ class SettingsDialog(QtGui.QDialog):
         long_break_layout.addStretch()
 
         main_layout.addLayout(long_break_layout)
+
+        # ALWAYS ON TOP
+        always_on_top_layout = QtGui.QHBoxLayout()
+        always_on_top_label = QtGui.QLabel("Always on top:")
+        always_on_top_label.setFixedWidth(SETTINGS_LABEL_WIDTH)
+        always_on_top_layout.addWidget(always_on_top_label)
+        self.always_on_top_cb = QtGui.QCheckBox()
+        always_on_top_layout.addWidget(self.always_on_top_cb)
+        always_on_top_layout.addStretch()
+
+        if self.parent.settings.always_on_top == ALWAYS_ON_TOP_YES:
+            self.always_on_top_cb.setChecked(True)
+        else:
+            self.always_on_top_cb.setChecked(False)
+
+        main_layout.addLayout(always_on_top_layout)
 
         buttons_layout = QtGui.QHBoxLayout()
         ok_btn = QtGui.QPushButton("OK")
@@ -133,6 +151,11 @@ class SettingsDialog(QtGui.QDialog):
         valid, value = validate(self.long_break_edit, "Long break")
         if valid:
             settings.parent.long_break = value
+
+        if self.always_on_top_cb.isChecked():
+            settings.always_on_top = ALWAYS_ON_TOP_YES
+        else:
+            settings.always_on_top = ALWAYS_ON_TOP_NO
 
         # Save changes...
         settings.save()
