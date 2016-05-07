@@ -3,7 +3,8 @@ This module contains all actions used by pyradaiz.
 """
 from dialogs import SettingsDialog
 
-from model.consts import START_ICON, STOP_ICON, POMODORO_DURATION, RESET_ICON
+from model.consts import START_ICON, PAUSE_ICON, RESET_ICON, SETTINGS_ICON, \
+    ABOUT_ICON, TASKS_ICON, QUIT_ICON
 
 __author__ = 'Alen Suljkanovic'
 
@@ -53,7 +54,7 @@ class StopAction(PyradaizAction):
     def __init__(self,parent):
         super(StopAction, self).__init__(parent)
         self.parent = parent
-        self.setIcon(QtGui.QIcon(STOP_ICON))
+        self.setIcon(QtGui.QIcon(PAUSE_ICON))
         self.setText("&Stop")
         self.setShortcut('Ctrl+X')
         self.setStatusTip('Stop pomodoro')
@@ -101,6 +102,7 @@ class QuitAction(PyradaizAction):
     def __init__(self, parent):
         super(QuitAction, self).__init__(parent)
         self.parent = parent
+        self.setIcon(QtGui.QIcon(QUIT_ICON))
         self.setText("&Quit")
         self.setShortcut('Ctrl+Q')
         self.setStatusTip('Exit application')
@@ -113,6 +115,7 @@ class SettingsAction(PyradaizAction):
     def __init__(self, parent):
         super(SettingsAction, self).__init__(parent)
         self.parent = parent
+        self.setIcon(QtGui.QIcon(SETTINGS_ICON))
         self.setText("&Settings")
         self.triggered.connect(self.do)
 
@@ -122,3 +125,35 @@ class SettingsAction(PyradaizAction):
         """
         dialog = SettingsDialog(self.parent)
         dialog.exec_()
+
+
+class AboutAction(PyradaizAction):
+
+    def __init__(self, parent):
+        super(AboutAction, self).__init__(parent)
+        self.parent = parent
+        self.setIcon(QtGui.QIcon(ABOUT_ICON))
+        self.setText("&About")
+        self.triggered.connect(self.do)
+
+    def do(self):
+        """
+        Executes the action.
+        """
+        pass
+
+
+class TasksAction(PyradaizAction):
+
+    def __init__(self, parent):
+        super(TasksAction, self).__init__(parent)
+        self.parent = parent
+        self.setIcon(QtGui.QIcon(TASKS_ICON))
+        self.setText("&Tasks")
+        self.triggered.connect(self.do)
+
+    def do(self):
+        """
+        Executes the action.
+        """
+        pass

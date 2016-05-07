@@ -2,12 +2,10 @@ import os
 import sys
 from xml.etree.ElementTree import ElementTree, Element, SubElement
 from PyQt4 import QtGui, QtCore
-from xdg.Menu import ELEMENT_NODE
 from model.actions import StartAction, StopAction, QuitAction, \
-    ResetAction, SettingsAction
-from model.consts import SHORT_BREAK, POMODORO_DURATION, UP_ARROW_ICON, \
-    DOWN_ARROW_ICON, GO_ON, TAKE_A_BREAK, LONG_BREAK, LOGO_IMAGE, START_ICON, \
-    STOP_ICON, RESET_ICON
+    ResetAction, SettingsAction, TasksAction, AboutAction
+from model.consts import SHORT_BREAK, POMODORO_DURATION,\
+    GO_ON, TAKE_A_BREAK, LONG_BREAK, LOGO_IMAGE
 from model.utils import get_root_path
 
 
@@ -182,22 +180,6 @@ class PyradaizGui(QtGui.QMainWindow):
         self.lcd.display(init_time)
 
         main_layout.addWidget(self.lcd)
- 
-        btn_layout = QtGui.QHBoxLayout()
-        self.btn_start = QtGui.QPushButton(QtGui.QIcon(START_ICON),
-                                           "Start", self)
-
-        btn_layout.addWidget(self.btn_start)
-        self.btn_stop = QtGui.QPushButton(QtGui.QIcon(STOP_ICON),
-                                          "Stop", self)
-        btn_layout.addWidget(self.btn_stop)
-
-        self.btn_reset = QtGui.QPushButton(QtGui.QIcon(RESET_ICON),
-                                           "Reset", self)
-        btn_layout.addWidget(self.btn_reset)
-        btn_layout.addStretch()
-
-        main_layout.addLayout(btn_layout)
 
         self.shown = False
 
@@ -239,7 +221,7 @@ class PyradaizGui(QtGui.QMainWindow):
                      self.show_message)
 
         self.create_actions()
-        self.create_menu()
+        self.create_toolbar()
         self.create_context_menu()
 
     def create_actions(self):
@@ -247,30 +229,27 @@ class PyradaizGui(QtGui.QMainWindow):
         Create actions and assign them to the buttons.
         """
         self.start_action = StartAction(self)
-        self.btn_start.clicked.connect(self.start_action.do)
-
         self.stop_action = StopAction(self)
-        self.btn_stop.clicked.connect(self.stop_action.do)
-
         self.reset_action = ResetAction(self)
-        self.btn_reset.clicked.connect(self.reset_action.do)
         self.quit_action = QuitAction(self)
-
+        self.tasks_action = TasksAction(self)
         self.settings_action = SettingsAction(self)
+        self.about_action = AboutAction(self)
 
-    def create_menu(self):
+    def create_toolbar(self):
         """
         Creates menu.
         """
-        file_menu = self.menuBar().addMenu("&File")
-        file_menu.addAction(self.quit_action)
-
-        tasks_menu = self.menuBar().addMenu("&Tasks")
-
-        settings_menu = self.menuBar().addMenu("&Settings")
-        settings_menu.addAction(self.settings_action)
-
-        about_menu = self.menuBar().addMenu("&About")
+        toolbar = self.addToolBar("Toolbar")
+        toolbar.setIconSize(QtCore.QSize(16, 16))
+        toolbar.addAction(self.start_action)
+        toolbar.addAction(self.stop_action)
+        toolbar.addAction(self.reset_action)
+        toolbar.addSeparator()
+        toolbar.addAction(self.tasks_action)
+        toolbar.addAction(self.settings_action)
+        toolbar.addAction(self.about_action)
+        toolbar.addAction(self.quit_action)
 
     def create_context_menu(self):
         """
@@ -284,6 +263,8 @@ class PyradaizGui(QtGui.QMainWindow):
         self.context_menu.addSeparator()
         self.context_menu.addAction(self.reset_action)
         self.context_menu.addSeparator()
+        self.context_menu.addAction(self.settings_action)
+        self.context_menu.addAction(self.about_action)
         self.context_menu.addAction(self.quit_action)
 
     def update(self, time):
