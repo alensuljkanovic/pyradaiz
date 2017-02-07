@@ -1,11 +1,11 @@
 import os
 from xml.etree.ElementTree import ElementTree, Element, SubElement
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 from model.actions import StartAction, StopAction, QuitAction, \
-    ResetAction, SettingsAction, TasksAction, AboutAction
+    ResetAction, SettingsAction, TasksAction, AboutAction, ChangeUI
 from model.consts import SHORT_BREAK, POMODORO_DURATION,\
     GO_ON, TAKE_A_BREAK, LONG_BREAK, LOGO_IMAGE, ALWAYS_ON_TOP_NO, \
-    ALWAYS_ON_TOP_YES
+    ALWAYS_ON_TOP_YES, TOOLBAR_ICON_MAX_SIZE, TOOLBAR_ICON_MIN_SIZE
 from model.utils import get_root_path
 
 
@@ -123,9 +123,14 @@ class PyradaizThread(QtCore.QThread):
     """
     Thread that modifies the counter and gives notifications about breaks.
     """
-    def __init__(self, parent):
+    # update_display = QtCore.pyqtSignal(['QString'])
+    def __init__(self, parent, update_signal, take_a_break_signal,
+                 go_on_signal):
         super(PyradaizThread, self).__init__()
         self.parent = parent
+        self.update_signal = update_signal
+        self.take_a_break_signal = take_a_break_signal
+        self.go_on_signal = go_on_signal
         self.minutes = self.parent.minutes
         self.seconds = self.parent.seconds
 
@@ -142,6 +147,7 @@ class PyradaizThread(QtCore.QThread):
         """
         # Loop until one pomodoro session + following break are over.
         while self.minutes >= 0 and self.seconds >= 0:
+            print("Running thread...")
             self.seconds -= 1
             if self.seconds < 0:
                 self.seconds = 59
@@ -156,15 +162,20 @@ class PyradaizThread(QtCore.QThread):
                     else:
                         self.minutes = self.long_break
 
-                    self.emit(QtCore.SIGNAL("take_a_break(QString)"),
-                              "%s" % self.minutes)
+                    # self.emit(QtCore.SIGNAL("take_a_break(QString)"),
+                    #           "%s" % self.minutes)
+                    self.take_a_break_signal.emit(self.minutes)
                 else:
                     self.minutes = POMODORO_DURATION
-                    self.emit(QtCore.SIGNAL("go_on(QString)"), "go_on")
+                    # self.emit(QtCore.SIGNAL("go_on(QString)"), "go_on")
+                    self.go_on_signal.emit(self.minutes)
 
                 self._break = not self._break
 
-            self.emit(QtCore.SIGNAL("update_display(QString)"), self.time)
+            print("Update display...")
+            print(self.time)
+            self.update_signal.emit(self.time)
+            # self.emit(QtCore.SIGNAL("update_display(QString)"), self.time)
             # This ensures that the display is updated every second.
             self.sleep(1)
 
@@ -177,17 +188,24 @@ class PyradaizThread(QtCore.QThread):
         return time_str(self.minutes, self.seconds)
 
 
-class PyradaizGui(QtGui.QMainWindow):
+class PyradaizGui(QtWidgets.QMainWindow):
     """
     Main window.
     """
+
+    # Signal definitions...
+    update_display = QtCore.pyqtSignal(['QString'])
+    take_a_break = QtCore.pyqtSignal(['QString'])
+    go_on = QtCore.pyqtSignal(['QString'])
+
     def __init__(self, *args, **kwargs):
         super(PyradaizGui, self).__init__(*args, **kwargs)
+        main_layout = QtWidgets.QVBoxLayout()
+        self.slim_view = False
 
-        self.setWindowTitle("pyradaiz")
-        main_layout = QtGui.QVBoxLayout()
+        self.setWindowTitle("Pyradaiz")
  
-        self.lcd = QtGui.QLCDNumber(self)
+        self.lcd = QtWidgets.QLCDNumber(self)
 
         self.tasks = []
         self.running = False
@@ -204,25 +222,25 @@ class PyradaizGui(QtGui.QMainWindow):
 
         self.shown = False
 
-        self.tasks = QtGui.QTableWidget()
+        self.tasks = QtWidgets.QTableWidget()
         self.tasks.setAlternatingRowColors(True)
         self.tasks.setColumnCount(1)
         self.tasks.setVisible(self.shown)
 
         header = self.tasks.horizontalHeader()
-        header.setResizeMode(0, QtGui.QHeaderView.Stretch)
+        # header.setResizeMode(0, QtWidgets.QHeaderView.Stretch)
         header.setVisible(False)
 
         main_layout.addWidget(self.tasks)
 
-        central_widget = QtGui.QWidget()
+        central_widget = QtWidgets.QWidget()
  
         self.setCentralWidget(central_widget)
  
         central_widget.setLayout(main_layout)
-        self.setGeometry(300, 300, 280, 170)
+        self.setGeometry(300, 300, 280, 130)
 
-        self.tray_icon = QtGui.QSystemTrayIcon(self)
+        self.tray_icon = QtWidgets.QSystemTrayIcon(self)
         self.logo = QtGui.QIcon()
         self.logo.addPixmap(QtGui.QPixmap(LOGO_IMAGE),
                        QtGui.QIcon.Normal,
@@ -232,14 +250,11 @@ class PyradaizGui(QtGui.QMainWindow):
 
         self.setWindowIcon(self.logo)
 
-        self.timer_thread = PyradaizThread(self)
-        self.connect(self.timer_thread,
-                     QtCore.SIGNAL("update_display(QString)"),
-                     self.update)
-        self.connect(self.timer_thread, QtCore.SIGNAL("take_a_break(QString)"),
-                     self.show_message)
-        self.connect(self.timer_thread, QtCore.SIGNAL("go_on(QString)"),
-                     self.show_message)
+        self.timer_thread = PyradaizThread(self, self.update_display,
+                                           self.take_a_break, self.go_on)
+        self.update_display.connect(self.update)
+        self.take_a_break.connect(self.show_message)
+        self.go_on.connect(self.show_message)
 
         self.create_actions()
         self.create_toolbar()
@@ -256,27 +271,29 @@ class PyradaizGui(QtGui.QMainWindow):
         self.tasks_action = TasksAction(self)
         self.settings_action = SettingsAction(self)
         self.about_action = AboutAction(self)
+        self.change_ui_action = ChangeUI(self)
 
     def create_toolbar(self):
         """
         Creates menu.
         """
-        toolbar = self.addToolBar("Toolbar")
-        toolbar.setIconSize(QtCore.QSize(16, 16))
-        toolbar.addAction(self.start_action)
-        toolbar.addAction(self.stop_action)
-        toolbar.addAction(self.reset_action)
-        toolbar.addSeparator()
-        toolbar.addAction(self.tasks_action)
-        toolbar.addAction(self.settings_action)
-        toolbar.addAction(self.about_action)
-        toolbar.addAction(self.quit_action)
+        self.toolbar = self.addToolBar("Toolbar")
+        self.toolbar.setIconSize(TOOLBAR_ICON_MAX_SIZE)
+        self.toolbar.addAction(self.start_action)
+        self.toolbar.addAction(self.stop_action)
+        self.toolbar.addAction(self.reset_action)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.tasks_action)
+        self.toolbar.addAction(self.settings_action)
+        self.toolbar.addAction(self.about_action)
+        self.toolbar.addAction(self.quit_action)
+        self.toolbar.addAction(self.change_ui_action)
 
     def create_context_menu(self):
         """
         Creates context menu used for system tray icon.
         """
-        self.context_menu = QtGui.QMenu()
+        self.context_menu = QtWidgets.QMenu()
         self.tray_icon.setContextMenu(self.context_menu)
 
         self.context_menu.addAction(self.start_action)
@@ -304,5 +321,20 @@ class PyradaizGui(QtGui.QMainWindow):
             title = GO_ON
         else:
             title = TAKE_A_BREAK % minutes
-        icon = QtGui.QSystemTrayIcon.Information
+        icon = QtWidgets.QSystemTrayIcon.Information
         self.tray_icon.showMessage(title, "", icon, 5000)
+
+    def toggle_ui(self):
+        """
+        Toggle UI between slim and regular view.
+        """
+        if not self.slim_view:
+            self.toolbar.setIconSize(TOOLBAR_ICON_MIN_SIZE)
+            self.addToolBar(QtCore.Qt.RightToolBarArea, self.toolbar)
+            self.resize(175, 75)
+            self.slim_view = True
+        else:
+            self.toolbar.setIconSize(TOOLBAR_ICON_MAX_SIZE)
+            self.addToolBar(QtCore.Qt.TopToolBarArea, self.toolbar)
+            self.resize(280, 130)
+            self.slim_view = False

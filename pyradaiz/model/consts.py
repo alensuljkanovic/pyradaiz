@@ -3,6 +3,7 @@ This module contains all constants used in the code.
 """
 import os
 from model.utils import get_root_path
+from PyQt5 import QtCore
 
 __author__ = 'Alen Suljkanovic'
 
@@ -20,6 +21,8 @@ SETTINGS_ICON = os.path.join(icons_path, "settings.svg")
 ABOUT_ICON = os.path.join(icons_path, "information-symbol.svg")
 TASKS_ICON = os.path.join(icons_path, "tasks-list.svg")
 QUIT_ICON = os.path.join(icons_path, "power-button-off.svg")
+MINIMIZE_ICON = os.path.join(icons_path, "arrow-pointing-down.svg")
+MAXIMIZE_ICON = os.path.join(icons_path, "arrow-up.svg")
 
 TAKE_A_BREAK = "Sir, you should take a %s minute break"
 GO_ON = "Go on, sir!"
@@ -28,3 +31,6 @@ SETTINGS_LABEL_WIDTH = 140
 LINE_EDIT_WIDTH = 40
 ALWAYS_ON_TOP_YES = "Yes"
 ALWAYS_ON_TOP_NO = "No"
+
+TOOLBAR_ICON_MAX_SIZE = QtCore.QSize(12, 12)
+TOOLBAR_ICON_MIN_SIZE = QtCore.QSize(8, 8)

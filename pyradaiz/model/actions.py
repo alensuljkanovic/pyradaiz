@@ -4,14 +4,14 @@ This module contains all actions used by pyradaiz.
 from dialogs import SettingsDialog
 
 from model.consts import START_ICON, PAUSE_ICON, RESET_ICON, SETTINGS_ICON, \
-    ABOUT_ICON, TASKS_ICON, QUIT_ICON
+    ABOUT_ICON, TASKS_ICON, QUIT_ICON, MINIMIZE_ICON, MAXIMIZE_ICON
 
 __author__ = 'Alen Suljkanovic'
 
-from PyQt4 import QtGui
+from PyQt5 import QtWidgets, QtGui
 
 
-class PyradaizAction(QtGui.QAction):
+class PyradaizAction(QtWidgets.QAction):
     """
     Base class for all actions used in pyradaiz.
     """
@@ -46,7 +46,7 @@ class StartAction(PyradaizAction):
 
         self.parent.running = True
         self.parent.timer_thread.minutes = self.parent.minutes
-        self.parent.timer_thread.seconds = 0
+        self.parent.timer_thread.seconds = self.parent.seconds
         self.parent.timer_thread.start()
 
 
@@ -65,10 +65,10 @@ class StopAction(PyradaizAction):
         """
         Executes the action.
         """
+        self.parent.running = False
+        self.parent.timer_thread.terminate()
         self.parent.minutes = self.parent.timer_thread.minutes
         self.parent.seconds = self.parent.timer_thread.seconds
-        self.parent.timer_thread.terminate()
-        self.parent.running = False
 
 
 class ResetAction(PyradaizAction):
@@ -107,7 +107,7 @@ class QuitAction(PyradaizAction):
         self.setShortcut('Ctrl+Q')
         self.setStatusTip('Exit application')
         self.parent.timer_thread.terminate()
-        self.triggered.connect(QtGui.qApp.quit)
+        self.triggered.connect(QtWidgets.qApp.quit)
 
 
 class SettingsAction(PyradaizAction):
@@ -157,3 +157,20 @@ class TasksAction(PyradaizAction):
         Executes the action.
         """
         pass
+
+
+class ChangeUI(PyradaizAction):
+
+    def __init__(self, parent):
+        super(ChangeUI, self).__init__(parent)
+        self.parent = parent
+        self.setIcon(QtGui.QIcon(MINIMIZE_ICON))
+        self.setText("&Tasks")
+        self.triggered.connect(self.do)
+
+    def do(self):
+        self.parent.toggle_ui()
+        if self.parent.slim_view:
+            self.setIcon(QtGui.QIcon(MAXIMIZE_ICON))
+        else:
+            self.setIcon(QtGui.QIcon(MINIMIZE_ICON))
